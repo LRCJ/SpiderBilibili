@@ -34,7 +34,7 @@ def GetPage(Url, Data={}, Headers={}, Method=0):
 
 ########## 将数据存入数据库 ##########
 def StoreDB(*cmd,Host="localhost",User="liaoren",
-            Passwd="x8hJxaIbQ",Auth="mysql_native_password",
+            Passwd="123456",Auth="mysql_native_password",
             DB="bilibili_data"):
     con = mysql.connector.connect(host=Host,user=User,password=Passwd,auth_plugin=Auth,database=DB)
     curson = con.cursor()
@@ -53,7 +53,7 @@ def StoreDB(*cmd,Host="localhost",User="liaoren",
 
 ########## 查询数据库数据 ##########
 def QueryDB(cmd,Host="localhost",User="liaoren",
-            Passwd="x8hJxaIbQ",Auth="mysql_native_password",
+            Passwd="123456",Auth="mysql_native_password",
             DB="bilibili_data"):
     con = mysql.connector.connect(host=Host,user=User,password=Passwd,auth_plugin=Auth,database=DB)
     curson = con.cursor(buffered=True)
@@ -87,6 +87,8 @@ def GetUPinfo(Store=False):
         else:
             logging.info("删除无需再查询信息的UP基本数据失败！")
             return 0
+    else:
+        logging.info("没有需要删除无需再爬取的UP基本数据")
     ##### 判断是否要更新UP数据
     result = QueryDB("SELECT uid FROM uid_list WHERE NOT EXISTS (SELECT uid FROM %s WHERE %s.uid=uid_list.uid);"%(table,table))
     if len(result) == 0:#根据数据库中的uid_list表来确定需不需要查询新的up主的信息或删除up信息
@@ -105,7 +107,7 @@ def GetUPinfo(Store=False):
                     "User-Agent": "Mozilla / 5.0(Windows NT 10.0;Win64;x64) AppleWebKit / 537.36(KHTML, likeGecko) Chrome / 80.0.3987.122Safari / 537.36"
                 }
                 resp = GetPage(url,Data=para,Headers=header)
-                data = json.load(resp)
+                data = json.loads(resp.read().decode("utf-8"))
                 up_info.append({
                     "uid":data['data']['mid'],                          #uid号
                     "name":data['data']['name'],                        #昵称
@@ -151,6 +153,9 @@ def GetFans(Store=False):
         logging.info("删除无需再查询信息的UP粉丝数据失败！")
     #### 查询uid_list表，获取需要查询数据的UP的uid
     result = QueryDB("SELECT uid FROM uid_list;")
+    if len(result) == 0:
+        logging.info("在uid_list中未查询到uid，无法查询UP粉丝数据！")
+        return 0
     ##### 根据uid号爬取粉丝数据
     fans = []
     for i in result:
@@ -216,7 +221,7 @@ def GetVideoList(Uid,Store=False):
             para["pn"] = para["pn"] + 1
             resp = GetPage(url,Data=para,Headers=header)
             time.sleep(1)
-            data = json.load(resp)
+            data = json.loads(resp.read().decode("utf-8"))
             for i in data["data"]["list"]["vlist"]:
                 videos_list.append({
                     "uid":i["mid"],         #视频作者uid号
@@ -273,6 +278,9 @@ def GetVideoListNew():
         logging.info("删除无需再查询信息的UP的视频列表数据失败！")
     ##### 查询需要爬取数据的UP的数据
     result = QueryDB("SELECT uid FROM uid_list;")
+    if len(result) == 0:
+        logging.info("在uid_list中未查询到uid，无法查询视频列表数据！")
+        return 0
     for i in result:
         result = GetVideoList(i[0],Store=True)
         if result == 0:
@@ -288,6 +296,9 @@ def GetVideoData(Store=False):
     ##### 查询videos_list中的bvid
     result = QueryDB("SELECT bvid FROM %s;"%table_)
     bv_list = [i[0] for i in result ]
+    if len(bv_list) == 0:
+        logging.info("在videos_list中未查到bvid，无法查询视频详细数据！")
+        return 0
     ##### 删除videos_data中（bvid）存在，但videos_list中（bvid）不存在的视频数据
     result = QueryDB("SELECT bvid FROM %s WHERE NOT EXISTS (SELECT bvid FROM %s WHERE %s.bvid=%s.bvid) GROUP BY bvid;"%(table,table_,table_,table))
     cmd = ["DELETE FROM %s WHERE bvid = '%s';" % (table, i[0]) for i in result]
@@ -311,7 +322,7 @@ def GetVideoData(Store=False):
             para["bvid"] = bv_list[i]
             resp = GetPage(url,Data=para,Headers=header)
             time.sleep(0.5)
-            data = json.load(resp)
+            data = json.loads(resp.read().decode("utf-8"))
             VideoDataList.append({
                 "bvid":data["data"]["bvid"],                   #视频的bv号
                 "view":data["data"]["stat"]["view"],           #视频播放量

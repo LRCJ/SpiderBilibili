@@ -9,18 +9,6 @@ def func(signum,frame):
         sche.shutdown()
         logging.warning("程序正常退出！")
         sys.exit()
-    elif signum == signal.SIGUSR1:
-        logging.info("这是用户定义信号1！")
-    elif signum == signal.SIGUSR2:
-        logging.info("这是用户定义信号2！")
-    else:
-        logging.warning("未知信号！")
-
-########## 测试函数 ##########
-def f1():
-    logging.info("这是测试函数1！")
-def f2():
-    logging.info("这是测试函数2！")
 
 if __name__ == '__main__':
     ######### 关闭程序处理函数注册 ##########
@@ -71,21 +59,19 @@ if __name__ == '__main__':
     ########## 配置调度器 ##########
     sche = BackgroundScheduler(timezone="Asia/Shanghai")
     logging.getLogger("apscheduler").setLevel(logging.WARNING)
-    sche.add_job(f1,"interval",seconds=20)
-    sche.add_job(f2,"interval",seconds=10)
+
+    ########## 定时从数据库中取出需要查询视频数据的up主的uid并更新up_info表 / 每1,11,21,31,41,51分钟查询一次
+    sche.add_job(MyFunc.GetUPinfo,"cron",minute="1/10",kwargs={"Store":True})
+
+    ########## 定时更新fans表 / 每3,13,23,33,43,53分钟查询一次
+    sche.add_job(MyFunc.GetFans,"cron",minute="3/10",kwargs={"Store":True})
+
+    ########## 定时更新videos_list表 / 每5,20,35,50分钟查询一次
+    sche.add_job(MyFunc.GetVideoListNew,"cron",minute="5/15")
+
+    ########## 定时更新videos_data表 / 每10,25,40,55分钟查询一次
+    sche.add_job(MyFunc.GetVideoData,"cron",minute="10/15",kwargs={"Store":True})
+
     sche.start()
-    ########## 定时从数据库中取出需要查询视频数据的up主的uid并更新up_info表 / 每60分钟
-    # MyFunc.GetUPinfo(Store=True)
-
-    ########## 定时更新fans表 / 每10分钟
-    # GetFans(Store=True)
-
-    ########## 定时更新videos_list表 / 每60分钟
-    # GetVideoListNew()
-
-    ########## 定时更新videos_data表 / 每60分钟
-    # GetVideoData(Store=True)
-
-
     while True:
         time.sleep(10)
